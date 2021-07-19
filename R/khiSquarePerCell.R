@@ -1,0 +1,268 @@
+#'  Khi Square Per Cell
+#'
+#'  It makes Khi Square Per Cell for dataframe with the total number of case per column
+#' @param df is a dataframe
+#' @param n.Segmentation TRUE if exits in df the total number of case per each column
+#' @param decimais the number of decimals for the results
+#' @param decimaisPorcentage decimals used for percentage results
+#' @param dec.Global.p_Value decimals for the global khi square reult
+#' @return Khi Square Per Cell in different presentation options
+#' @export
+
+
+Khi.Square.Per.Cell<- function(df, n.Segmentation,
+                               decimais = 3, decimaisPorcentage = 0,
+                               dec.Global.p_Value=6){
+
+  if (n.Segmentation == TRUE){
+    dadosOriginal<-df
+    row.names(df)<-dadosOriginal[,1]
+    dadosAux<-df #
+    dados<-dadosAux[-1,]
+    dados[,1]<-NULL
+    dadosAux[,1]<-NULL
+
+    Tabla<-data.frame(matrix(nrow = nrow(dados), ncol = ncol(dados)))
+    nombres<-names(dados)
+    colnames(Tabla) <- nombres
+    row.names(Tabla)<-dadosOriginal[c(2:nrow(dadosOriginal)),1]
+
+    Tabla.Com.Pvalue<-Tabla
+    Tabla.Porcentagem<-Tabla
+    Tabla.Mas.Porcentagem<-Tabla
+    Tabla.Porcentagem.Com.Pvalue<-Tabla
+    Tabla.Dados.Porcentagem.Com.Pvalue<-Tabla
+
+    Porcentagem<-Tabla
+    for (coluna in 1:ncol(dados)){
+      for (linha in 1:nrow(dados)){
+        Porcentagem[linha,coluna]<-round(dados[linha,coluna]*100/dadosAux[1,coluna],decimaisPorcentage)
+      }
+    }
+
+    options (warn=-1)
+    chi.global<-stats::chisq.test(dados)
+    options (warn=0)
+
+    Tabela.khi<-data.frame(matrix(nrow = 2, ncol = 2))
+
+    for(i in 1:nrow(dados)){
+      for(j in 1:ncol(dados)){
+
+        sum.Linha<-sum(dados[i,-j])
+        sum.Coluna<-sum(dados[-i,j])
+        Sub.Table<-dados[-i,-j]
+        Tabela.khi[1,1]<-dados[i,j]
+        Tabela.khi[2,1]<-sum.Coluna
+        Tabela.khi[1,2]<-sum.Linha
+        Tabela.khi[2,2]<-sum(Sub.Table)
+
+        spected.teorical.value<-sum(Tabela.khi[,1])*sum(Tabela.khi[1,])/sum(Tabela.khi)
+        sinal<-NULL
+        if(dados[i,j]<spected.teorical.value){sinal<-" (-)"
+        }else if(dados[i,j]==spected.teorical.value){sinal<-" "
+        }else{sinal<-" (+)"}
+
+        options (warn=-1)
+        Teste.Chi.Quadrado<-stats::chisq.test(Tabela.khi)
+        options (warn=0)
+        Valor.de.P<-Teste.Chi.Quadrado$p.value
+        Significancia<-NULL
+        if(Valor.de.P<0.001){Significancia<-"***"
+        }else if(Valor.de.P<0.01){Significancia<-"**"
+        }else if(Valor.de.P<0.05){Significancia<-"*"
+        }else{sinal<-" "}
+
+
+        Tabla[i,j]<-paste(dados[i,j],sinal,sep="")
+        Tabla[i,j]<-paste(Tabla[i,j],Significancia,sep="")
+        #---------------------------------------------------------------------------------------
+        Tabla.Com.Pvalue[i,j]<-paste(dados[i,j],"(",
+                                     if (round(Valor.de.P,decimais) < 0.001){
+                                       "<0.001"}
+                                     else{
+                                       round(Valor.de.P,decimais)
+                                     }
+                                     ,")",sinal,sep="")
+        Tabla.Com.Pvalue[i,j]<-paste(Tabla.Com.Pvalue[i,j],Significancia,sep="")
+        #---------------------------------------------------------------------------------------
+        Tabla.Porcentagem[i,j]<-paste(Porcentagem[i,j],sinal,sep="")
+        Tabla.Porcentagem[i,j]<-paste(Tabla.Porcentagem[i,j],Significancia,sep="")
+        #--------------------------------------------------------------------------------------
+        Tabla.Porcentagem.Com.Pvalue[i,j]<-paste(Porcentagem[i,j],"(",
+                                                 if (round(Valor.de.P,decimais) < 0.001){
+                                                   "<0.001"}
+                                                 else{
+                                                   round(Valor.de.P,decimais)
+                                                 }
+                                                 ,")",sinal,sep="")
+        Tabla.Porcentagem.Com.Pvalue[i,j]<-paste(Tabla.Porcentagem.Com.Pvalue[i,j],Significancia,sep="")
+        #----------------------------------------------------------------------------------------
+
+        # #--------------------------------------------------------------------------------------
+        Tabla.Dados.Porcentagem.Com.Pvalue[i,j]<-paste(dados[i,j],
+                                                       "[",Porcentagem[i,j],"]","(",
+                                                       if (round(Valor.de.P,decimais) < 0.001){
+                                                         "<0.001"}
+                                                       else{
+                                                         round(Valor.de.P,decimais)
+                                                       }
+                                                       ,")",sinal,sep="")
+        Tabla.Dados.Porcentagem.Com.Pvalue[i,j]<-paste(Tabla.Dados.Porcentagem.Com.Pvalue[i,j],Significancia,sep="")
+
+        # i=13
+        # j=2
+        Tabla.Mas.Porcentagem[i,j]<-paste(dados[i,j],"[",Porcentagem[i,j],"]",sinal,sep="")
+        Tabla.Mas.Porcentagem[i,j]<-paste(Tabla.Mas.Porcentagem[i,j],Significancia,sep="")
+      }
+    }
+
+    ###-------------------------------------------------------------------------
+    Tabla[(nrow(Tabla)+1),]<-NA
+    row.names(Tabla)[nrow(Tabla)]<-c("p_value Global Khi Test")
+    Tabla[nrow(Tabla),1]<-round(chi.global$p.value,dec.Global.p_Value)
+
+
+    Tabla.Com.Pvalue[nrow(Tabla),1]<-round(chi.global$p.value,dec.Global.p_Value)
+    row.names(Tabla.Com.Pvalue)[nrow(Tabla)]<-c("p_value Global Khi Test")
+
+    Tabla.Porcentagem[nrow(Tabla),1]<-round(chi.global$p.value,dec.Global.p_Value)
+    row.names(Tabla.Porcentagem)[nrow(Tabla)]<-c("p_value Global Khi Test")
+
+    Tabla.Porcentagem.Com.Pvalue[nrow(Tabla),1]<-round(chi.global$p.value,dec.Global.p_Value)
+    row.names(Tabla.Porcentagem.Com.Pvalue)[nrow(Tabla)]<-c("p_value Global Khi Test")
+
+    Tabla.Dados.Porcentagem.Com.Pvalue[nrow(Tabla),1]<-round(chi.global$p.value,dec.Global.p_Value)
+    row.names(Tabla.Dados.Porcentagem.Com.Pvalue)[nrow(Tabla)]<-c("p_value Global Khi Test")
+
+    Tabla.Mas.Porcentagem[nrow(Tabla),1]<-round(chi.global$p.value,dec.Global.p_Value)
+    row.names(Tabla.Mas.Porcentagem)[nrow(Tabla)]<-c("p_value Global Khi Test")
+    #----------------------------------------------------------------------------------------
+
+    message("------------------------------------------------------------------------")
+    message("                    -----------README-----------                        ")
+    message("Results could contain the following partial or total information:")
+    message("ex: 25[5](0.022) (+)*,where:")
+    message("- 25 express the original frequency,")
+    message("- [5] indicate the percentage of each original frequency in fuction of")
+    message("      the number of participants categorized in each colunm")
+    message("- (0.022) means the individual p_value for Khi Square Per Cell")
+    message("(+) or (-): indicates if observed value is higher or lower")
+    message("               than the expected theoretical value, and,")
+    message("The significance: *** p < 0.001;  ** p < 0.01  and   * p < 0.05")
+    message("Please cite this article DOI:..................................")
+    message("-------------------------------------------------------------------------")
+
+    return(list(Tabla=Tabla, Tabla.Com.Pvalue=Tabla.Com.Pvalue, Tabla.Porcentagem=Tabla.Porcentagem,
+                Tabla.Porcentagem.Com.Pvalue=Tabla.Porcentagem.Com.Pvalue,
+                Tabla.Dados.Porcentagem.Com.Pvalue=Tabla.Dados.Porcentagem.Com.Pvalue,
+                Tabla.Mas.Porcentagem=Tabla.Mas.Porcentagem))
+    #==================================================================================#
+  } else if (n.Segmentation == FALSE){
+    row.names(df)<-df[,1]
+    dadosOriginal<-df
+    dados<-df
+
+    Tabla<-data.frame(matrix(nrow = nrow(dados), ncol = ncol(dados)))
+    nombres<-names(dados)
+    colnames(Tabla) <- nombres
+    row.names(Tabla)<-dados[,1]
+    dados[,1]<-NULL
+    Tabla[,1]<-NULL
+
+    Tabla.Com.Pvalue<-Tabla
+
+    options (warn=-1)
+    chi.global<-stats::chisq.test(dados)
+    options (warn=0)
+
+    Tabela.khi<-data.frame(matrix(nrow = 2, ncol = 2))
+
+    for(i in 1:nrow(dados)){
+      for(j in 1:ncol(dados)){
+
+        sum.Linha<-sum(dados[i,-j])
+        sum.Coluna<-sum(dados[-i,j])
+        Sub.Table<-dados[-i,-j]
+        Tabela.khi[1,1]<-dados[i,j]
+        Tabela.khi[2,1]<-sum.Coluna
+        Tabela.khi[1,2]<-sum.Linha
+        Tabela.khi[2,2]<-sum(Sub.Table)
+
+        spected.teorical.value<-sum(Tabela.khi[,1])*sum(Tabela.khi[1,])/sum(Tabela.khi)
+        sinal<-NULL
+        if(dados[i,j]<spected.teorical.value){sinal<-" (-)"
+        }else if(dados[i,j]==spected.teorical.value){sinal<-" "
+        }else{sinal<-" (+)"}
+
+
+        options (warn=-1)
+        Teste.Chi.Quadrado<-stats::chisq.test(Tabela.khi)
+        options (warn=0)
+        Valor.de.P<-Teste.Chi.Quadrado$p.value
+        Significancia<-NULL
+        if(Valor.de.P<0.001){Significancia<-"***"
+        }else if(Valor.de.P<0.01){Significancia<-"**"
+        }else if(Valor.de.P<0.05){Significancia<-"*"
+        }else{sinal<-" "}
+
+
+        Tabla[i,j]<-paste(dados[i,j],sinal,sep="")
+        Tabla[i,j]<-paste(Tabla[i,j],Significancia,sep="")
+        #---------------------------------------------------------------------------------------
+        Tabla.Com.Pvalue[i,j]<-paste(dados[i,j],"(",
+                                     if (round(Valor.de.P,decimais) < 0.001){
+                                       "<0.001"}
+                                     else{
+                                       round(Valor.de.P,decimais)
+                                     }
+                                     ,")",sinal,sep="")
+        Tabla.Com.Pvalue[i,j]<-paste(Tabla.Com.Pvalue[i,j],Significancia,sep="")
+      }
+    }
+
+    ###-------------------------------------------------------------------------
+    Tabla[(nrow(Tabla)+1),]<-NA #ojo
+    row.names(Tabla)[nrow(Tabla)]<-c("p_value Global Khi Test") #ojo
+    Tabla[nrow(Tabla),1]<-round(chi.global$p.value,dec.Global.p_Value)
+
+
+    Tabla.Com.Pvalue[nrow(Tabla),1]<-round(chi.global$p.value,dec.Global.p_Value)
+    row.names(Tabla.Com.Pvalue)[nrow(Tabla)]<-c("p_value Global Khi Test") #ojo
+
+    message("------------------------------------------------------------------------")
+    message("                    -----------README-----------                        ")
+    message("Results could contain the following partial or total information:")
+    message("ex: 25[5](0.022) (+)*,where:")
+    message("- 25 express the original frequency,")
+    message("- [5] indicate the percentage of each original frequency in fuction of")
+    message("      the number of participants categorized in each colunm")
+    message("- (0.022) means the individual p_value for Khi Square Per Cell")
+    message("(+) or (-): indicates if observed value is higher or lower")
+    message("               than the expected theoretical value, and,")
+    message("The significance: *** p < 0.001;  ** p < 0.01  and   * p < 0.05")
+    message("Please cite this article DOI:..................................")
+    message("-------------------------------------------------------------------------")
+
+    return(list(Tabla=Tabla, Tabla.Com.Pvalue=Tabla.Com.Pvalue))
+  }
+}
+
+
+
+# res<-Khi.Square.Per.Cell(dados, n.Segmentation = FALSE)
+# res$Tabla
+# res$Tabla.Com.Pvalue
+#
+#
+#
+# dados<-read.table(file="clipboard",head=TRUE,sep="\t",dec=".",check.names = FALSE)
+# res<-Khi.Square.Per.Cell(dados, n.Segmentation=TRUE)
+#
+# res$Tabla
+# res$Tabla.Com.Pvalue
+# res$Tabla.Porcentagem
+# res$Tabla.Porcentagem.Com.Pvalue
+# res$Tabla.Dados.Porcentagem.Com.Pvalue
+# res$Tabla.Mas.Porcentagem
+
